@@ -8,6 +8,7 @@ import time
 import socket
 import os
 import keyboard
+import netifaces  # You'll need to install this: pip install netifaces
 
 # Global variable to store the JSON data
 json_data = ""
@@ -61,15 +62,16 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         return json.load(f)
 
-def get_ip_addresses():
-    ip_addresses = []
-    try:
-        # Get all IP addresses
-        hostname = socket.gethostname()
-        ip_addresses = socket.gethostbyname_ex(hostname)[2]
-    except Exception as e:
-        print(f"Error getting IP addresses: {e}")
-    return ip_addresses
+def get_network_interfaces():
+    interfaces = []
+    for interface in netifaces.interfaces():
+        try:
+            if netifaces.AF_INET in netifaces.ifaddresses(interface):
+                for link in netifaces.ifaddresses(interface)[netifaces.AF_INET]:
+                    interfaces.append((interface, link['addr']))
+        except ValueError:
+            pass  # Skip interfaces that don't have an IPv4 address
+    return interfaces
 
 if __name__ == "__main__":
     config = {}
@@ -90,12 +92,16 @@ if __name__ == "__main__":
         config['csv_file'] = input("Enter the CSV filename: ")
         config_updated = True
     
-    while not os.path.exists(config['csv_file']):
-        print(f"CSV file '{config['csv_file']}' does not exist.")
-        input("Press Enter to check again or provide a new filename: ")
-        if input("Do you want to provide a new filename? (y/n): ").lower() == 'y':
-            config['csv_file'] = input("Enter the new CSV filename: ")
-            config_updated = True
+    # Get network interfaces
+    interfaces = get_network_interfaces()
+    
+    if 'interface' not in config or config['interface'] not in [ip for _, ip in interfaces]:
+        print("Available network interfaces:")
+        for i, (name, ip) in enumerate(interfaces):
+            print(f"{i+1}. {name}: {ip}")
+        choice = int(input("Choose the interface number to bind to: ")) - 1
+        config['interface'] = interfaces[choice][1]
+        config_updated = True
     
     if config_updated:
         with open(config_file, 'w') as f:
@@ -114,21 +120,13 @@ if __name__ == "__main__":
     print(f"Initial JSON data: {json_data[:100]}...")  # Print first 100 chars for debugging
     
     port = config['port']  # This is now guaranteed to be an integer
-    httpd = socketserver.TCPServer(("", port), JSONHandler)
+    interface = config['interface']
+    httpd = socketserver.TCPServer((interface, port), JSONHandler)
     server_thread = threading.Thread(target=run_server, args=(httpd,))
     server_thread.start()
 
-    print(f"Server is running on port {port}")
     print(f"Serving data from CSV file: {config['csv_file']}")
-    
-    # Get and display IP addresses
-    ip_addresses = get_ip_addresses()
-    if ip_addresses:
-        print("Server is accessible at:")
-        for ip in ip_addresses:
-            print(f"http://{ip}:{port}")
-    else:
-        print("Could not determine server IP addresses.")
+    print(f"Server is accessible at: http://{interface}:{port}")
     
     print("Server is running. Press 'r' to refresh JSON from CSV, or 'q' to quit.")
     while True:

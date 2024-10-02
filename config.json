@@ -1,4 +1,5 @@
 {
-    "port": 8010,
-    "csv_file": "test.csv"
+  "port": 8010,
+  "csv_file": "test.csv",
+  "interface": "192.168.1.100"
 }
