@@ -9,6 +9,9 @@ import socket
 import os
 import keyboard
 
+# Global variable to store the JSON data
+json_data = ""
+
 def csv_to_json(csv_file_path):
     # Read the CSV file and create a dictionary
     data = {}
@@ -28,13 +31,24 @@ def csv_to_json(csv_file_path):
 
 class JSONHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        global json_data
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')  # Allow all origins
         self.end_headers()
-        self.wfile.write(json_data.encode())
+        
+        try:
+            self.wfile.write(json_data.encode('utf-8'))
+            print(f"Served data: {json_data[:100]}...")  # Print first 100 chars for debugging
+        except Exception as e:
+            print(f"Error serving data: {e}")
+    
+    def log_message(self, format, *args):
+        print(f"Request: {self.command} {self.path}")
+        print(f"Status: {args[1]}")
 
 def run_server(server):
-    print(f"Serving JSON data on port {port}")
+    print(f"Serving JSON data on port {server.server_address[1]}")
     server.serve_forever()
 
 def shutdown_server(server):
@@ -58,43 +72,77 @@ def get_ip_addresses():
     return ip_addresses
 
 if __name__ == "__main__":
+    config = {}
+    config_file = 'config.json'
+    config_updated = False
+
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+    
+    if 'port' not in config:
+        config['port'] = int(input("Enter the port number: "))
+        config_updated = True
+    else:
+        config['port'] = int(config['port'])  # Ensure port is always an integer
+    
+    if 'csv_file' not in config:
+        config['csv_file'] = input("Enter the CSV filename: ")
+        config_updated = True
+    
+    while not os.path.exists(config['csv_file']):
+        print(f"CSV file '{config['csv_file']}' does not exist.")
+        input("Press Enter to check again or provide a new filename: ")
+        if input("Do you want to provide a new filename? (y/n): ").lower() == 'y':
+            config['csv_file'] = input("Enter the new CSV filename: ")
+            config_updated = True
+    
+    if config_updated:
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=2)
+        print("Config file updated with new inputs.")
+
     # Get the directory of the executable
     if getattr(sys, 'frozen', False):
         application_path = os.path.dirname(sys.executable)
     else:
         application_path = os.path.dirname(os.path.abspath(__file__))
 
-    config_file = os.path.join(application_path, "config.json")
-
-    # Load configuration
-    config = load_config(config_file)
-    port = config.get('port', 8000)  # Default to 8000 if not specified
     input_csv = os.path.join(application_path, config.get('csv_file', 'test.csv'))  # Default to 'test.csv' if not specified
 
-    json_data = csv_to_json(input_csv)
+    json_data = csv_to_json(config['csv_file'])
+    print(f"Initial JSON data: {json_data[:100]}...")  # Print first 100 chars for debugging
     
-    with socketserver.TCPServer(("", port), JSONHandler) as httpd:
-        server_thread = threading.Thread(target=run_server, args=(httpd,))
-        server_thread.start()
+    port = config['port']  # This is now guaranteed to be an integer
+    httpd = socketserver.TCPServer(("", port), JSONHandler)
+    server_thread = threading.Thread(target=run_server, args=(httpd,))
+    server_thread.start()
 
-        print(f"Server is running on port {port}")
-        print(f"Serving data from CSV file: {input_csv}")
-        
-        # Get and display IP addresses
-        ip_addresses = get_ip_addresses()
-        if ip_addresses:
-            print("Server is accessible at:")
-            for ip in ip_addresses:
-                print(f"http://{ip}:{port}")
+    print(f"Server is running on port {port}")
+    print(f"Serving data from CSV file: {config['csv_file']}")
+    
+    # Get and display IP addresses
+    ip_addresses = get_ip_addresses()
+    if ip_addresses:
+        print("Server is accessible at:")
+        for ip in ip_addresses:
+            print(f"http://{ip}:{port}")
+    else:
+        print("Could not determine server IP addresses.")
+    
+    print("Server is running. Press 'r' to refresh JSON from CSV, or 'q' to quit.")
+    while True:
+        command = input().lower()
+        if command == 'q':
+            break
+        elif command == 'r':
+            # Refresh JSON from CSV
+            json_data = csv_to_json(config['csv_file'])
+            print("JSON refreshed from CSV.")
         else:
-            print("Could not determine server IP addresses.")
-        
-        print("Press Ctrl+Q to shut down the server.")
-        
-        # Wait for Ctrl+Q
-        keyboard.wait('ctrl+q')
-        
-        shutdown_server(httpd)
-        server_thread.join()
+            print("Invalid command. Use 'r' to refresh or 'q' to quit.")
+    
+    shutdown_server(httpd)
+    server_thread.join()
 
     print("Application has been terminated.")
