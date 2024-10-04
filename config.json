@@ -1,5 +1,6 @@
 {
-  "port": 8010,
-  "csv_file": "test.csv",
-  "interface": "192.168.1.100"
+    "port": 8002,
+    "csv_file": "testi.csv",
+    "interface": "127.0.0.1",
+    "delimiter": ","
 }
