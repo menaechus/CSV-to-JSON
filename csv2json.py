@@ -64,10 +64,18 @@ def choose_interface(ip_addresses):
     print("Available interfaces:")
     for i, ip in enumerate(ip_addresses):
         print(f"{i+1}. {ip}")
-    choice = input("Choose the interface number (or press Enter for all interfaces): ")
-    if choice.strip():
-        return ip_addresses[int(choice) - 1]
-    return ""
+    while True:
+        choice = input("Choose the interface number (or press Enter for all interfaces): ").strip()
+        if choice == "":
+            return ""  # All interfaces
+        try:
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(ip_addresses):
+                return ip_addresses[choice_num - 1]
+            else:
+                print(f"Please enter a number between 1 and {len(ip_addresses)}")
+        except ValueError:
+            print("Invalid input. Please enter a number or press Enter for all interfaces.")
 
 if __name__ == "__main__":
     # Get the directory of the executable
@@ -84,9 +92,20 @@ if __name__ == "__main__":
 
     # Ask for CSV file
     default_csv = config.get('csv_file', 'test.csv')
-    input_csv = input(f"Enter the CSV file name (default: {default_csv}): ").strip() or default_csv
-    input_csv = os.path.join(application_path, input_csv)
-    
+    while True:
+        input_csv = input(f"Enter the CSV file name (default: {default_csv}): ").strip() or default_csv
+        
+        # Add .csv extension if it's missing
+        if not input_csv.lower().endswith('.csv'):
+            input_csv += '.csv'
+        
+        # Check if the file exists
+        full_path = os.path.join(application_path, input_csv)
+        if os.path.isfile(full_path):
+            break
+        else:
+            print(f"File '{input_csv}' not found. Please try again.")
+
     # Ask for delimiter
     default_delimiter = config.get('delimiter', ',')
     delimiter = input(f"Enter the CSV delimiter (default: '{default_delimiter}'): ").strip() or default_delimiter
