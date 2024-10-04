@@ -6,7 +6,8 @@ CSV to JSON Server is a Windows application that converts CSV files to JSON form
 ## Features
 - Convert CSV files to JSON format
 - Serve JSON data via a simple HTTP server
-- Configuration file support for port and CSV filename
+- User-configurable port number for the server
+- Configuration file support for port, CSV filename, and delimiter
 - User selection of network interface from available options
 - Dynamic JSON data refresh without server restart
 - Terminal-based controls (R for refresh, Q to quit)
@@ -24,9 +25,10 @@ CSV to JSON Server is a Windows application that converts CSV files to JSON form
 2. You'll be prompted to enter:
    - CSV filename (will add .csv extension if missing)
    - CSV delimiter
+   - Port number for the server (must be between 1024 and 65535)
    - Select a network interface from the list of available interfaces
 3. These settings will be saved in a `config.json` file for future use.
-4. Once the server starts, you'll see the specific address where it's accessible.
+4. Once the server starts, you'll see the specific address and port where it's accessible.
 5. Use the following commands in the terminal:
    - `R`: Refresh JSON data from the CSV file
    - `Q`: Quit the application

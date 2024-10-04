@@ -90,6 +90,23 @@ if __name__ == "__main__":
     config = load_config(config_file)
     port = config.get('port', 8000)  # Default to 8000 if not specified
 
+    # Ask for port number
+    default_port = config.get('port', 8000)
+    while True:
+        port_input = input(f"Enter the port number (default: {default_port}): ").strip() or str(default_port)
+        try:
+            port = int(port_input)
+            if 1024 <= port <= 65535:
+                break
+            else:
+                print("Port number must be between 1024 and 65535. Please try again.")
+        except ValueError:
+            print("Invalid input. Please enter a valid port number.")
+
+    # Update config with new port
+    config['port'] = port
+    save_config(config_file, config)
+
     # Ask for CSV file
     default_csv = config.get('csv_file', 'test.csv')
     while True:
